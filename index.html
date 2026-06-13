@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>제주도 주요 지점 거리 및 소요시간 지도</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            width: 100vw;
+            height: 100vh;
+            background-color: #e0f2fe; /* 지도가 로딩되기 전 배경색도 연한 하늘색으로 */
+        }
+        
+        /* ⭐️ 핵심: 오픈스트리트맵 타일을 하늘색 계열로 바꾸는 CSS 필터 */
+        .leaflet-tile-pane {
+            filter: sepia(100%) hue-rotate(185deg) saturate(120%) brightness(1.05);
+        }
+
+        /* 툴팁 텍스트 스타일링 */
+        .custom-tooltip {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #7dd3fc;
+            border-radius: 8px;
+            padding: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <script>
+        // 1. 지도 초기화
+        const map = L.map('map').setView([33.485, 126.545], 12);
+
+        // 2. 배경 지도 타일 추가
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // 3. 주요 지점 좌표
+        const locations = {
+            airport: { name: "제주국제공항", coords: [33.5104, 126.4914] },
+            highschool: { name: "제주중앙여고", coords: [33.4898, 126.5391] },
+            university: { name: "제주대학교", coords: [33.4560, 126.5621] }
+        };
+
+        // 4. 마커 생성
+        for (let key in locations) {
+            const loc = locations[key];
+            L.marker(loc.coords)
+                .addTo(map)
+                .bindPopup(`<b>${loc.name}</b>`);
+        }
+
+        // 5. 거리 및 소요시간 계산 함수
+        function drawDistanceLine(fromLoc, toLoc) {
+            const fromLatLng = L.latLng(fromLoc.coords);
+            const toLatLng = L.latLng(toLoc.coords);
+            
+            // 거리 계산 (km 단위)
+            const distanceKm = (fromLatLng.distanceTo(toLatLng) / 1000).toFixed(2);
+
+            // ⭐️ 소요시간 계산 (평균 시속 40km 기준)
+            const speedKmh = 40;
+            const timeHours = distanceKm / speedKmh;
+            const timeMinutes = Math.round(timeHours * 60); // 분 단위로 변환 후 반올림
+
+            // 선(Polyline) 그리기 (선 색상도 지도의 하늘색 톤에 맞게 조금 진한 파란색으로 변경)
+            const polyline = L.polyline([fromLoc.coords, toLoc.coords], {
+                color: '#0284c7', // 진한 하늘/파란색
+                weight: 3,
+                opacity: 0.8,
+                dashArray: '8, 8'
+            }).addTo(map);
+
+            // 마우스 오버 시 나타날 툴팁 내용
+            const tooltipContent = `
+                <div style="text-align: center; line-height: 1.4;">
+                    <strong style="color: #0369a1;">${fromLoc.name} ↔ ${toLoc.name}</strong><br>
+                    직선 거리: <b>${distanceKm} km</b><br>
+                    예상 시간: <b>약 ${timeMinutes}분</b><br>
+                    <span style="font-size: 11px; color: #6b7280;">(차량 시속 40km 기준)</span>
+                </div>
+            `;
+
+            polyline.bindTooltip(tooltipContent, {
+                sticky: true,
+                direction: 'top',
+                className: 'custom-tooltip' // CSS 클래스 적용
+            });
+        }
+
+        // 6. 각 구간 선 그리기
+        drawDistanceLine(locations.airport, locations.highschool);
+        drawDistanceLine(locations.highschool, locations.university);
+        drawDistanceLine(locations.airport, locations.university);
+
+    </script>
+</body>
+</html>
